@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Linux CTF Challenge</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Courier New', monospace; background: #000; color: #0f0; }
+    .matrix { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background:black; }
+    canvas { display:block; width:100%; height:100%; }
+    h1 { text-align:center; padding:1rem; font-size:3.5rem; }
+    .score-display { text-align:center; font-size:2.5rem; margin-bottom:0.5rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1rem;
+      max-width: 1200px;
+      margin: 0 auto 2rem;
+      justify-items: center;
+    }
+    .card {
+      background:#111;
+      border:1px solid #0f0;
+      border-radius:8px;
+      aspect-ratio:1/1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:1rem;
+      text-align:center;
+      position:relative;
+      cursor:pointer;
+      transition: background .3s;
+      width:100%;
+      box-sizing:border-box;
+    }
+    .card.easy  { border-color:#0f0; }
+    .card.medium{ border-color:#ff0; }
+    .card.hard  { border-color:#f00; }
+    .card:hover { background:#222; }
+    .pts {
+      position:absolute;
+      top:8px; right:8px;
+      font-size:.9rem;
+    }
+    .modal, .name-modal {
+      display:none;
+      position:fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background:rgba(0,0,0,.9);
+      justify-content:center;
+      align-items:center;
+      z-index:10;
+    }
+    .modal-content, .name-content {
+      background:#111;
+      padding:2rem;
+      border:2px solid #0f0;
+      border-radius:12px;
+      max-width:500px;
+      width:90%;
+      text-align:center;
+    }
+    .close-btn {
+      position:absolute;
+      top:.5rem; right:.5rem;
+      background:transparent;
+      border:none;
+      color:#0f0;
+      font-size:1.5rem;
+      cursor:pointer;
+    }
+    .hint {
+      background:#021;
+      color:#0f0;
+      padding:.5rem;
+      margin-top:1rem;
+      border-radius:4px;
+      display:none;
+    }
+    button, .toggle-hint {
+      background:#0f0;
+      color:#000;
+      border:none;
+      padding:.4rem .8rem;
+      margin-top:1rem;
+      cursor:pointer;
+      border-radius:4px;
+    }
+    #answerInput, #nameInput {
+      width:100%;
+      padding:.5rem;
+      margin-top:1rem;
+      background:#222;
+      border:1px solid #0f0;
+      color:#0f0;
+      border-radius:4px;
+    }
+    #feedback { display:block; margin-top:.5rem; }
+  </style>
+</head>
+<body>
+  <div class="matrix"><canvas id="matrixCanvas"></canvas></div>
+
+  <!-- Name Modal -->
+  <div class="name-modal" id="nameModal">
+    <div class="name-content">
+      <h2>Enter Your Name</h2>
+      <input id="nameInput" placeholder="Your name">
+      <button id="saveName">Start</button>
+    </div>
+  </div>
+
+  <h1>Linux Command Line CTF</h1>
+
+  <!-- Username: Score -->
+  <div class="score-display" id="scoreDisplay"></div>
+  <div style="text-align:center; margin-bottom:1rem;">
+    <button id="resetBtn">Reset Score</button>
+  </div>
+
+  <!-- Card Grid -->
+  <div class="grid" id="cardGrid"></div>
+
+  <!-- Question Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal()">×</button>
+      <h2 id="modalTitle"></h2>
+      <p id="modalQuestion"></p>
+      <input id="answerInput" placeholder="Your answer here">
+      <button id="submitAnswer">Submit</button>
+      <span id="feedback"></span>
+      <button class="toggle-hint" onclick="toggleHint()">Show Hint</button>
+      <div class="hint" id="modalHint"></div>
+    </div>
+  </div>
+
+  <script>
+    // Points by category
+    const pointsFor = { easy:1, medium:2, hard:3 };
+
+    // Questions data
+ function _0x2ca5(_0x5454b8,_0x15bd65){const _0x317745=_0x2fd6();return _0x2ca5=function(_0x3e3898,_0x442a34){_0x3e3898=_0x3e3898-(-0x1*-0x1e61+-0x2f*0x8b+-0x3fc);let _0x2d21a5=_0x317745[_0x3e3898];return _0x2d21a5;},_0x2ca5(_0x5454b8,_0x15bd65);}const _0xe955fa=_0x2ca5;(function(_0x4f64fd,_0x4aa58e){const _0xc7f044=_0x2ca5,_0x32a214=_0x4f64fd();while(!![]){try{const _0x5f45f6=parseInt(_0xc7f044(0x124))/(-0x2609+0x92d+0x1*0x1cdd)+-parseInt(_0xc7f044(0x11a))/(-0xe16+0x1cd7+0x19*-0x97)+parseInt(_0xc7f044(0x191))/(0xd3*-0x14+0x208f+0x10*-0x101)+parseInt(_0xc7f044(0x18d))/(-0x3*-0xca0+-0x695+0xa6d*-0x3)*(-parseInt(_0xc7f044(0xf6))/(-0x1*0xd54+0x1866+0x45*-0x29))+-parseInt(_0xc7f044(0x202))/(-0x1725+-0x7a7*0x3+0x120*0x29)+parseInt(_0xc7f044(0x1ca))/(0xf*0x175+0x91*0x1c+0x192*-0x18)*(parseInt(_0xc7f044(0x1a5))/(-0x14d7+-0xa1b+0x3d*0x82))+parseInt(_0xc7f044(0x111))/(-0xad9*-0x1+-0xb*-0x4b+0x1*-0xe09);if(_0x5f45f6===_0x4aa58e)break;else _0x32a214['push'](_0x32a214['shift']());}catch(_0x288e42){_0x32a214['push'](_0x32a214['shift']());}}}(_0x2fd6,-0x1*-0x103e5f+-0xf2f5+-0x4cf31));const questions=[{'title':_0xe955fa(0x12a)+_0xe955fa(0x1da)+_0xe955fa(0x1d5),'q':_0xe955fa(0xe6)+_0xe955fa(0x1db)+_0xe955fa(0x172)+_0xe955fa(0x14a)+_0xe955fa(0x178)+_0xe955fa(0x17f)+_0xe955fa(0x16f),'hint':_0xe955fa(0x147)+_0xe955fa(0x14d)+_0xe955fa(0x1ee),'ans':_0xe955fa(0x19f),'cat':_0xe955fa(0x115),'weight':0x1},{'title':_0xe955fa(0x1cd)+_0xe955fa(0x1bd),'q':_0xe955fa(0x1a1)+_0xe955fa(0x168)+_0xe955fa(0x100)+_0xe955fa(0x118)+_0xe955fa(0xef),'hint':_0xe955fa(0x114)+_0xe955fa(0x19b)+_0xe955fa(0x169),'ans':_0xe955fa(0x125),'cat':_0xe955fa(0x115),'weight':0x1},{'title':_0xe955fa(0x18b),'q':_0xe955fa(0x15c)+_0xe955fa(0x16e)+_0xe955fa(0x1ed)+_0xe955fa(0x18a)+_0xe955fa(0x1d1)+_0xe955fa(0x174),'hint':_0xe955fa(0x13d)+_0xe955fa(0x15a),'ans':_0xe955fa(0x1d6),'cat':_0xe955fa(0x115),'weight':0x1},{'title':_0xe955fa(0x1eb)+'p','q':_0xe955fa(0x139)+_0xe955fa(0x199)+_0xe955fa(0x1f6)+_0xe955fa(0xf2)+_0xe955fa(0x1a6)+_0xe955fa(0x163),'hint':_0xe955fa(0x155)+_0xe955fa(0x1fa)+_0xe955fa(0x138),'ans':_0xe955fa(0x1f5),'cat':_0xe955fa(0x115),'weight':0x1},{'title':_0xe955fa(0xe5),'q':_0xe955fa(0x15c)+_0xe955fa(0x13c)+_0xe955fa(0x140)+_0xe955fa(0x1fd)+_0xe955fa(0x1e3)+_0xe955fa(0xf3)+_0xe955fa(0x1e5),'hint':_0xe955fa(0x166)+_0xe955fa(0x121)+'!.','ans':_0xe955fa(0x105),'cat':_0xe955fa(0x115),'weight':0x1},{'title':_0xe955fa(0x11f)+_0xe955fa(0x14f),'q':_0xe955fa(0x15c)+_0xe955fa(0x13c)+_0xe955fa(0x10d)+_0xe955fa(0x106),'hint':_0xe955fa(0x14c)+_0xe955fa(0x1c7),'ans':_0xe955fa(0xea)+_0xe955fa(0x119),'cat':_0xe955fa(0x128),'weight':0x2},{'title':_0xe955fa(0x181)+'e','q':_0xe955fa(0x15c)+_0xe955fa(0x101)+_0xe955fa(0x156)+_0xe955fa(0x1d8),'hint':_0xe955fa(0x183)+_0xe955fa(0x104),'ans':_0xe955fa(0x180),'cat':_0xe955fa(0x128),'weight':0x2},{'title':_0xe955fa(0x1b3),'q':_0xe955fa(0xe6)+_0xe955fa(0xee)+_0xe955fa(0x160)+_0xe955fa(0x13e)+'?','hint':_0xe955fa(0x15d)+_0xe955fa(0x1e8)+_0xe955fa(0x126),'ans':_0xe955fa(0x158),'cat':_0xe955fa(0x128),'weight':0x2},{'title':_0xe955fa(0x1e4),'q':_0xe955fa(0x15c)+_0xe955fa(0x129)+_0xe955fa(0x137)+_0xe955fa(0x1e6)+_0xe955fa(0x1a7),'hint':_0xe955fa(0x1cb)+_0xe955fa(0x1cf)+_0xe955fa(0x103)+'e.','ans':_0xe955fa(0x165),'cat':_0xe955fa(0x128),'weight':0x2},{'title':_0xe955fa(0x141)+'er','q':_0xe955fa(0x1a1)+_0xe955fa(0x168)+_0xe955fa(0x1f3)+_0xe955fa(0x120)+_0xe955fa(0x17c)+_0xe955fa(0x17e),'hint':_0xe955fa(0xf1)+_0xe955fa(0x153),'ans':'id','cat':_0xe955fa(0x128),'weight':0x2},{'title':_0xe955fa(0x188)+_0xe955fa(0x130),'q':_0xe955fa(0x139)+_0xe955fa(0x135)+_0xe955fa(0x184)+_0xe955fa(0x161)+_0xe955fa(0x1d9),'hint':_0xe955fa(0x10a),'ans':_0xe955fa(0x112)+_0xe955fa(0x159)+_0xe955fa(0xf9)+_0xe955fa(0x177)+'s','cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x17b)+_0xe955fa(0x1f9),'q':_0xe955fa(0x1c4)+_0xe955fa(0x1bb)+_0xe955fa(0xe4)+_0xe955fa(0x1a9)+_0xe955fa(0xed),'hint':_0xe955fa(0x1e0)+_0xe955fa(0xe9)+_0xe955fa(0x1ea)+_0xe955fa(0x1ce)+_0xe955fa(0x198)+_0xe955fa(0x1ba),'ans':_0xe955fa(0x162)+_0xe955fa(0x1d7),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0xe3)+_0xe955fa(0x182),'q':_0xe955fa(0x15c)+_0xe955fa(0x10b)+_0xe955fa(0x1c8)+_0xe955fa(0x1c1)+_0xe955fa(0x200)+_0xe955fa(0x148)+_0xe955fa(0xfa)+_0xe955fa(0x193)+_0xe955fa(0x142),'hint':_0xe955fa(0x1e2)+_0xe955fa(0x107)+_0xe955fa(0x1af),'ans':_0xe955fa(0x189)+_0xe955fa(0x1b8)+_0xe955fa(0x144)+_0xe955fa(0x1f7),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x1be),'q':_0xe955fa(0x1e7)+_0xe955fa(0x19e)+_0xe955fa(0x136)+_0xe955fa(0x1ff)+_0xe955fa(0x156)+_0xe955fa(0x149)+_0xe955fa(0xe8),'hint':_0xe955fa(0x110)+_0xe955fa(0xf7)+_0xe955fa(0x13f)+'!.','ans':_0xe955fa(0xfb)+_0xe955fa(0x149)+_0xe955fa(0xeb),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x10f),'q':_0xe955fa(0x15c)+_0xe955fa(0x16c)+_0xe955fa(0x10c)+_0xe955fa(0x116)+_0xe955fa(0x19a),'hint':_0xe955fa(0x1f4)+_0xe955fa(0x14e)+_0xe955fa(0x1d0),'ans':_0xe955fa(0x194),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x187)+_0xe955fa(0x1b9),'q':_0xe955fa(0x139)+_0xe955fa(0x19d)+_0xe955fa(0x186)+'o?','hint':_0xe955fa(0x152)+_0xe955fa(0x1d2)+_0xe955fa(0x1aa)+_0xe955fa(0xe1)+_0xe955fa(0x15f)+'..','ans':_0xe955fa(0x131)+_0xe955fa(0x1b9),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0xfe)+_0xe955fa(0x1cc),'q':_0xe955fa(0x1e7)+_0xe955fa(0xfd)+_0xe955fa(0x1b5)+_0xe955fa(0x146),'hint':_0xe955fa(0xf5),'ans':_0xe955fa(0x192),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x179),'q':_0xe955fa(0x15c)+_0xe955fa(0xfc)+_0xe955fa(0x13b)+_0xe955fa(0x201),'hint':_0xe955fa(0x133),'ans':_0xe955fa(0x1ab),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x1b7)+_0xe955fa(0x10e),'q':_0xe955fa(0x108)+_0xe955fa(0x18f)+_0xe955fa(0x1f8),'hint':_0xe955fa(0x1f1)+_0xe955fa(0x127)+_0xe955fa(0x16b)+_0xe955fa(0x102)+_0xe955fa(0x164)+_0xe955fa(0x1c2)+_0xe955fa(0x176),'ans':_0xe955fa(0xff)+_0xe955fa(0x171),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x1e9)+_0xe955fa(0x1b0),'q':_0xe955fa(0x12d)+_0xe955fa(0x11c)+_0xe955fa(0x1fb)+_0xe955fa(0x1fe)+_0xe955fa(0x1f2)+_0xe955fa(0x1de),'hint':_0xe955fa(0x122)+_0xe955fa(0x1d3)+_0xe955fa(0x1a3)+_0xe955fa(0x18e),'ans':_0xe955fa(0x113)+'e','cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0xf8),'q':_0xe955fa(0xe0)+_0xe955fa(0x1fc)+_0xe955fa(0x11d)+_0xe955fa(0x175)+_0xe955fa(0xf4)+_0xe955fa(0x16d)+_0xe955fa(0x1bf)+_0xe955fa(0xec)+'?','hint':_0xe955fa(0x190)+_0xe955fa(0x1ae),'ans':_0xe955fa(0x1e1),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x15e)+_0xe955fa(0x123),'q':_0xe955fa(0x196)+_0xe955fa(0x1b2)+_0xe955fa(0x11b)+_0xe955fa(0x1dc)+_0xe955fa(0x1b4)+_0xe955fa(0x18c)+_0xe955fa(0x12c)+_0xe955fa(0x12b)+_0xe955fa(0x1c3),'hint':_0xe955fa(0x1ac)+_0xe955fa(0x1a8)+_0xe955fa(0x134),'ans':_0xe955fa(0x1a4)+_0xe955fa(0x1a8)+_0xe955fa(0x1ef),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x150)+'g','q':_0xe955fa(0x1ec)+_0xe955fa(0x151)+_0xe955fa(0x154)+_0xe955fa(0x13a)+_0xe955fa(0x145)+_0xe955fa(0x1c9)+_0xe955fa(0xe6)+_0xe955fa(0x167),'hint':_0xe955fa(0x17a)+_0xe955fa(0x1df),'ans':_0xe955fa(0x1ad)+_0xe955fa(0xe2)+_0xe955fa(0x1d4),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x1c5),'q':_0xe955fa(0x1c6)+_0xe955fa(0x143)+_0xe955fa(0x197)+_0xe955fa(0x195)+_0xe955fa(0x132),'hint':_0xe955fa(0x1dd)+_0xe955fa(0xf0)+_0xe955fa(0x1b1),'ans':_0xe955fa(0x12f)+_0xe955fa(0x11e)+_0xe955fa(0xe7)+_0xe955fa(0x14b),'cat':_0xe955fa(0x173),'weight':0x3},{'title':_0xe955fa(0x170)+_0xe955fa(0x19c),'q':_0xe955fa(0x1c6)+_0xe955fa(0x1b6)+_0xe955fa(0x157)+_0xe955fa(0x12e)+_0xe955fa(0x185)+_0xe955fa(0x1c0)+_0xe955fa(0x16a),'hint':_0xe955fa(0x15b)+_0xe955fa(0x1bc)+_0xe955fa(0x1f0)+_0xe955fa(0x17d),'ans':_0xe955fa(0x1a2)+_0xe955fa(0x1a0)+_0xe955fa(0x117)+_0xe955fa(0x109),'cat':_0xe955fa(0x173),'weight':0x3}];function _0x2fd6(){const _0x2a8c28=['s\x20Append','ou\x20one\x20lev','\x20chmod\x20755','can’t\x20acce','rom\x20the\x20co','\x20over\x20chmo','ines\x20of\x20a\x20','d\x20\x22IfUknow','ge?','4132308aPgyuu','If\x20a\x20user\x20','at::\x20m....','me\x20config.','Recursive\x20','\x20and\x20>>\x20wh','New\x20File','What\x20comma','itch\x20to\x20\x20u','at.txt?','\x20:\x20ov.....','mkdir\x20dirn','at.txt','ould\x20check','output?','nd\x20shows\x20a','ry?','s\x20root\x20vs\x20','Check\x20idea','do\x20it\x20with','\x20(easiest\x20','’s\x20the\x20fir','suuuuuuuu.','4958845whTwHP','he\x20fox\x20wit','Dir\x20Access','wner,\x20read','/home/here','tail\x20-n\x2050','\x20view\x20disk','u\x20switch\x20t','Switch\x20to\x20','user\x20accou','your\x20curre','\x20delete\x20a\x20','ormat::\x20u.','e\x20util\x20nam','rm.','touch','ory?','sively\x20to\x20','What\x20is\x20/e','ate','rw-r--r--','\x20find\x20file','which\x20port','new\x20direct','d\x20Use','Port\x20Usage','Donot\x20be\x20t','11644542ZbxclC','read\x20and\x20w','755\x20is\x20saf','Print\x20work','easy','\x20a\x20process','nd\x20up\x20to\x20d','nt\x20directo','ame','147412oGZfqq','and\x20get\x20“c','you\x20prefer','ss\x20a\x20direc','t\x20user,\x20sw','New\x20Direct','t\x20user\x20(do','touch\x20that','Security\x20p','t\x20Found','590222GdyRTw','pwd','ons.','ount\x20infor','medium','\x20get\x20help\x20','List\x20Files','t’s\x20the\x20is','ists\x20—\x20wha','Why\x20might\x20','apt\x20update','run\x20as\x20roo','644','make\x20execu','\x20and\x20su?','df\x20tool.','ission.','the\x20chmod\x20','\x20last\x2050\x20l','for\x20a\x20comm','el\x20up.','What\x20does\x20','config.jso','\x20space\x20usa','\x20create\x20a\x20','Less\x20is\x20mo','\x20processes','h\x20out\x20tail','new\x20file\x20f','Current\x20Us','\x20find)?','\x20differenc','\x20/home/her','n\x20in\x20your\x20','\x20user?','Try\x20listin','Uknow\x22\x20in\x20','\x20DoNotUseC','irectories','ser','Make\x20direc','g\x20in\x20long\x20','\x20with\x20tuli','ory','Find\x20Confi','o\x20find\x20a\x20f','Permission','lly.','ile\x20named\x20','It\x20moves\x20y','file\x20named','\x20of\x20using\x20','ps\x20aux','rite\x20for\x20o','re.','format:\x20k.','How\x20do\x20you','processsss','Command\x20No','\x20ex.......','ll\x20running','xt\x20command','overwrite\x20','ommand?','...\x20acc...','man','Think\x20and\x20','nd?','and\x20shows\x20','ory.','larly?','mation\x20.\x20F','\x20find\x20out\x20','st\x20permiss','\x20display\x20t','\x20owner?','Update\x20&\x20U','nt\x20info','iles\x20and\x20d','hard','use\x20cat)?','tory,\x20what','.....','\x20for\x20other','\x20with\x20perm','Disk\x20Usage','find\x20with\x20','Redirect\x20v','\x20not\x20use\x20w','p\x20to\x20d....','hoami)?','ission\x20and','rm\x20hello','Remove\x20Fil','Search','Remove\x20is\x20','644\x20file.t','\x20&&\x20apt\x20up','cript.sh\x20d','Make\x20Execu','File\x20Perm\x20','grep\x20-r\x20If','s\x20of\x20a\x20fil','View\x20File','he\x20file\x20ex','4jeymHf','\x20is\x20s....)','tc/passwd\x20','Execute\x20pe','1300998gDwXti','sudo\x20su','/there\x20(no','ss\x20-tulpin','using\x20sudo','You\x20run\x20./','e\x20between\x20','ll\x20the\x20bla','\x22cd\x20..\x22\x20do','\x20is\x20using?','ing\x20direct','pgrade','chmod\x20+x\x20s','u\x20view\x20the','ls\x20-l','m\x20secure\x20a','Which\x20comm','keep\x20syste','Format\x20755','missing\x20ex','8HkYltr','\x20another\x20c','ux?','ecute\x20perm','en\x20saving\x20','tion.\x20Form','df\x20-h','Missing\x20ex','find\x20~\x20-na','rmission.','path.','s\x20777','switch.','script.sh\x20','Processes','\x20found.”\x20T','o\x20the\x20root','\x20advantage','/etc/passw','UknowUknow','table','nk.)','\x20between\x20>','.\x20system\x20s','rectory','Last\x20Lines','ion\x20you\x20sh','grade\x20regu','ng\x20the\x20wor','\x20i........','sue?','Difference','sudo\x20vs\x20su','What’s\x20the','tory.','s\x20containi','home\x20dir.\x20','865396wpujRV','Manual\x20pag','Root','Current\x20Di','.....\x20.(fi','es\x20just\x20th','\x20and\x20pen.','e\x20(do\x20not\x20','\x20for\x20execu','rinciple.(','json','ions','less','and\x20append','\x20\x22hello\x22?','\x20do?','\x20&\x20Permiss','nd\x20lists\x20f','ommand\x20not','One-time\x20a','a\x20script?','-name.','ans\x20format','execute','grep\x20recur','mmand\x20line','Help','way)?','and\x20in\x20Lin','How\x20can\x20yo','\x20with\x20opti','Perm\x20755\x20v','.\x20and\x20ap..','Navigate\x20U','You\x20want\x20t','he\x20content','format.','ission','....\x20and\x20u','Stores\x20acc','d\x20777\x20for\x20','the\x20curren','ScreenShot','cd\x20../','?\x20Can\x20you\x20','e/there','used\x20for?'];_0x2fd6=function(){return _0x2a8c28;};return _0x2fd6();}
+
+
+
+    let username = localStorage.getItem('ctfName');
+    let totalScore = parseInt(localStorage.getItem('ctfScore')) || 0;
+    const attempts = Array(questions.length).fill(0);
+
+    // Start button
+    document.getElementById('saveName').onclick = () => {
+      const name = document.getElementById('nameInput').value.trim();
+      if (!name) return;
+      username = name;
+      localStorage.setItem('ctfName', name);
+      document.getElementById('nameModal').style.display = 'none';
+      init();
+      updateScoreDisplay();
+    };
+
+    // Build card grid
+    function init() {
+      const grid = document.getElementById('cardGrid');
+      grid.innerHTML = '';
+      questions.forEach((q,i) => {
+        const card = document.createElement('div');
+        card.className = `card ${q.cat}`;
+        card.innerHTML = `
+          <div>${q.title}</div>
+          <div class="pts">${pointsFor[q.cat]}pt${pointsFor[q.cat]>1?'s':''}</div>
+        `;
+        card.onclick = () => openModal(i);
+        grid.appendChild(card);
+      });
+    }
+
+    // Reset
+    document.getElementById('resetBtn').onclick = () => {
+      if (confirm('Reset your name and score?')) {
+        localStorage.clear();
+        location.reload();
+      }
+    };
+
+    // Modal logic
+    const modal = document.getElementById('modal');
+    let current = null;
+
+    function openModal(idx) {
+      current = idx;
+      const q = questions[idx];
+      document.getElementById('modalTitle').innerText   = q.title;
+      document.getElementById('modalQuestion').innerText= q.q;
+      document.getElementById('modalHint').innerText    = q.hint;
+      document.getElementById('feedback').innerText     = '';
+      const input = document.getElementById('answerInput');
+      const btn   = document.getElementById('submitAnswer');
+      const done  = localStorage.getItem(`answered_${idx}`);
+
+      if (done || attempts[idx]>=5) {
+        input.disabled = btn.disabled = true;
+        btn.style.display = 'none';
+      } else {
+        input.disabled = btn.disabled = false;
+        btn.style.display = 'inline-block';
+      }
+      input.value = '';
+      toggleHint(attempts[idx]>=5);
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+    }
+
+    function toggleHint(force=false) {
+      const hintEl = document.getElementById('modalHint');
+      const btn    = document.querySelector('.toggle-hint');
+      if (force || hintEl.style.display==='none') {
+        hintEl.style.display = 'block';
+        btn.innerText = 'Hide Hint';
+      } else {
+        hintEl.style.display = 'none';
+        btn.innerText = 'Show Hint';
+      }
+    }
+
+    // Submit answer
+    document.getElementById('submitAnswer').onclick = () => {
+      const input = document.getElementById('answerInput');
+      const fb    = document.getElementById('feedback');
+      const btn   = document.getElementById('submitAnswer');
+      const val   = input.value.trim().toLowerCase();
+      const corr  = questions[current].ans.toLowerCase();
+      attempts[current]++;
+
+      if (val === corr) {
+        fb.innerText = '✅ Correct!';
+        fb.style.color = '#0f0';
+        totalScore += pointsFor[questions[current].cat];
+        localStorage.setItem('ctfScore', totalScore);
+        localStorage.setItem(`answered_${current}`, '1');
+        updateScoreDisplay();
+        disableInput();
+      } else if (attempts[current] >= 5) {
+        fb.innerText = '❌ Out of tries.';
+        fb.style.color = '#f00';
+        toggleHint(true);
+        disableInput();
+      } else {
+        fb.innerText = `❌ Try again (${5 - attempts[current]} left)`;
+        fb.style.color = '#ff0';
+      }
+    };
+
+    function disableInput() {
+      document.getElementById('answerInput').disabled = true;
+      const b = document.getElementById('submitAnswer');
+      b.disabled = true;
+      b.style.display = 'none';
+    }
+
+    function updateScoreDisplay() {
+      document.getElementById('scoreDisplay').innerText = username
+        ? `${username}: ${totalScore}`
+        : `Score: ${totalScore}`;
+    }
+
+    // Matrix background
+    const canvas = document.getElementById('matrixCanvas');
+    const ctx    = canvas.getContext('2d');
+    canvas.width = innerWidth;
+    canvas.height= innerHeight;
+    const cols   = Math.floor(canvas.width / 20);
+    const ypos   = Array(cols).fill(0);
+
+    function matrix() {
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#0f0';
+      ypos.forEach((y,i) => {
+        const char = String.fromCharCode(0x30A0 + Math.random() * 96);
+        const x    = i * 20;
+        ctx.fillText(char, x, y);
+        ypos[i] = y > canvas.height + 10000 ? 0 : y + 20;
+      });
+    }
+    setInterval(matrix, 50);
+
+    // On load
+    window.onload = () => {
+      if (username) {
+        document.getElementById('nameModal').style.display = 'none';
+        init();
+        updateScoreDisplay();
+      } else {
+        document.getElementById('nameModal').style.display = 'flex';
+      }
+    };
+  </script>
+</body>
+</html>
+
+   
